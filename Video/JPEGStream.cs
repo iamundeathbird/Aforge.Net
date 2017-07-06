@@ -90,6 +90,9 @@ namespace AForge.Video
 		private Thread thread = null;
 		private ManualResetEvent stopEvent = null;
 
+        //if we should use digest authentication when connecting to the video source
+        private bool forceDigestAuthentication =false;
+
         /// <summary>
         /// New frame event.
         /// </summary>
@@ -305,6 +308,23 @@ namespace AForge.Video
             get { return forceBasicAuthentication; }
             set { forceBasicAuthentication = value; }
         }
+        /// <summary>
+        /// Force using of digest authentication when connecting to the video source.
+        /// </summary>
+        /// 
+        /// <remarks><para>For some IP cameras (TrendNET IP cameras, for example) using standard .NET's authentication via credentials
+        /// does not seem to be working (seems like camera does not request for authentication, but expects corresponding headers to be
+        /// present on connection request). So this property allows to force basic authentication by adding required HTTP headers when
+        /// request is sent.</para>
+        /// 
+        /// <para>Default value is set to <see langword="false"/>.</para>
+        /// </remarks>
+        /// 
+        public bool ForceDigestAuthentication
+        {
+            get { return forceDigestAuthentication; }
+            set { forceDigestAuthentication = value; }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JPEGStream"/> class.
@@ -482,6 +502,18 @@ namespace AForge.Video
                         string authInfo = string.Format( "{0}:{1}", login, password );
                         authInfo = Convert.ToBase64String( Encoding.Default.GetBytes( authInfo ) );
                         request.Headers["Authorization"] = "Basic " + authInfo;
+                    }
+                    // force digest authentication through extra headers if required
+                    if(forceDigestAuthentication)
+                    {
+                        NetworkCredential myNetworkCredential = new NetworkCredential(login, password);
+
+                        CredentialCache myCredentialCache = new CredentialCache();
+                        myCredentialCache.Add(new Uri(source), "Digest", myNetworkCredential);
+
+                        //myHttpWebRequest.PreAuthenticate = true;
+                        request.Credentials = myCredentialCache;
+                        request.Proxy = null;
                     }
 					// get response
                     response = request.GetResponse( );
